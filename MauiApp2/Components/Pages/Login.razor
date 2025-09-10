@@ -1,0 +1,257 @@
+﻿@page "/"
+@using System.ComponentModel.DataAnnotations
+@using MauiApp2.Services
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject AuthService AuthService
+
+
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @alertClass alert-dismissible fade show alert-fade position-absolute top-0 start-50 translate-middle-x mt-3 zindex-tooltip" role="alert" style="max-width: 400px;">
+        @message
+        <button type="button" class="btn-close" @onclick="() => message = null"></button>
+    </div>
+}
+
+<div class="login-wrapper">
+    <EditForm Model="@loginModel" OnValidSubmit="LoginUser">
+         <div class="d-flex justify-content-center align-items-center vh-100 bg-light">
+            <div class="card login-card shadow rounded-4 p-4" style="min-width: 220px; max-width: 400px; width: 100%;">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold">🔐 Login</h3>
+            </div>
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Email</label>
+                    <InputText id="username" class="form-control" @bind-Value="loginModel.UserEmail" placeholder="Enter your email" />
+                <ValidationMessage For="@(() => loginModel.UserEmail)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                    <InputText id="password" class="form-control" type="password" @bind-Value="loginModel.UserPassword" placeholder="Enter your password" />
+                <ValidationMessage For="@(() => loginModel.UserPassword)" />
+            </div>
+
+            <div class="text-end mb-3">
+                <a href="javascript:void(0);" @onclick="ShowForgotPasswordModal" class="text-decoration-none">Forgot Password?</a>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span><span class="spinner-border spinner-border-sm me-2"></span> Logging in...</span>
+                }
+                else
+                {
+                    <span>Login</span>
+                }
+            </button>
+        </div>
+        </div>
+    </EditForm>
+</div>
+
+<!-- Forgot Password Modal -->
+@if (showForgotPasswordModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 p-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">Forgot Password</h5>
+                    <button type="button" class="btn-close" @onclick="HideForgotPasswordModal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Enter your email:</label>
+                    <InputText @bind-Value="forgotEmail" class="form-control" placeholder="Email" />
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="HideForgotPasswordModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SendPasswordResetRequest">Send Reset Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Reset Password Modal -->
+@if (showResetPasswordModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 p-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reset Password</h5>
+                    <button type="button" class="btn-close" @onclick="HideResetPasswordModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label>Email:</label>
+                        <InputText @bind-Value="resetEmail" class="form-control" readonly />
+                    </div>
+                    <div class="mb-2">
+                        <label>Token:</label>
+                        <InputText @bind-Value="resetToken" class="form-control" placeholder="Paste token from email" />
+                    </div>
+                    <div class="mb-2">
+                        <label>New Password:</label>
+                        <InputText @bind-Value="newPassword" type="password" class="form-control" placeholder="Enter new password" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="HideResetPasswordModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SubmitNewPassword">Reset Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private LoginModel loginModel = new();
+    private bool isLoading = false;
+    private string message;
+    private string alertClass;
+
+    private bool showForgotPasswordModal = false;
+    private string forgotEmail = "";
+
+    private bool showResetPasswordModal = false;
+    private string resetEmail = "";
+    private string resetToken = "";
+    private string newPassword = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await SecureStorage.GetAsync("authToken");
+            if (!string.IsNullOrEmpty(token))
+                Navigation.NavigateTo("/Home", true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("SecureStorage error: " + ex.Message);
+        }
+    }
+
+    private async Task ShowTimedMessage(string msg, string cssClass, int delay = 3000)
+    {
+        message = msg;
+        alertClass = cssClass;
+        StateHasChanged();
+        await Task.Delay(delay);
+        message = null;
+        StateHasChanged();
+    }
+
+    private async Task LoginUser()
+    {
+        isLoading = true;
+        message = null;
+
+        try
+        {
+            var logindata = new LoginModel
+            {
+                UserEmail = loginModel.UserEmail,
+                UserPassword = loginModel.UserPassword
+            };
+            var response = await AuthService.LoginAsync(logindata);
+            // ✅ Extract string values from AuthResult
+            await SecureStorage.SetAsync("authToken", response.Token);
+            await SecureStorage.SetAsync("UserName", response.Username);
+            await SecureStorage.SetAsync("Email", response.Email);
+            // await SecureStorage.SetAsync("role", response.Rolename);
+            // await SecureStorage.SetAsync("refreshToken", response.RefreshToken);
+            // await SecureStorage.SetAsync("tokenExpiry", response.tokenExp.ToString());
+            // await SecureStorage.SetAsync("userId", response.UserId);
+
+            await ShowTimedMessage("✅ Login successful!", "alert-success");
+            Navigation.NavigateTo("/Home", true);
+        }
+        catch
+        {
+            await ShowTimedMessage("❌ Login failed. Please check your credentials.", "alert-danger");
+        }
+    
+        isLoading = false;
+    }
+
+    void ShowForgotPasswordModal() => showForgotPasswordModal = true;
+    void HideForgotPasswordModal() => showForgotPasswordModal = false;
+
+    void ShowResetPasswordModal()
+    {
+        resetEmail = forgotEmail;
+        showResetPasswordModal = true;
+    }
+
+    void HideResetPasswordModal()
+    {
+        showResetPasswordModal = false;
+        resetToken = "";
+        newPassword = "";
+    }
+
+    private async Task SendPasswordResetRequest()
+    {
+        if (string.IsNullOrWhiteSpace(forgotEmail))
+        {
+            await ShowTimedMessage("❌ Please enter an email address.", "alert-danger");
+            return;
+        }
+
+        try
+        {
+            await AuthService.ForgetAsync(forgotEmail);
+            await ShowTimedMessage("✅ Reset link sent. Enter token & new password.", "alert-success");
+            ShowResetPasswordModal();
+        }
+        catch (Exception ex)
+        {
+            await ShowTimedMessage($"❌ Error: {ex.Message}", "alert-danger");
+        }
+
+        showForgotPasswordModal = false;
+    }
+
+    private async Task SubmitNewPassword()
+    {
+        if (string.IsNullOrWhiteSpace(resetToken) || string.IsNullOrWhiteSpace(newPassword))
+        {
+            await ShowTimedMessage("❌ All fields required.", "alert-danger");
+            return;
+        }
+
+        try
+        {
+            await AuthService.resetpasswordAsync(resetEmail, resetToken, newPassword);
+            await ShowTimedMessage("✅ Password reset successful.", "alert-success");
+            showResetPasswordModal = false;
+        }
+        catch (Exception ex)
+        {
+            await ShowTimedMessage($"❌ Error: {ex.Message}", "alert-danger");
+        }
+    }
+
+    public class LoginModel
+    {
+      //  [Required(ErrorMessage = "Email is required.")]
+      //  [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string UserEmail { get; set; }
+
+      //  [Required(ErrorMessage = "Password is required.")]
+        public string UserPassword { get; set; }
+        public bool RememberMe { get; set; } = false;
+   //     public string forgotEmail { get; set; }
+ //       public string Token { get; set; }
+   //     public string NewPassword { get; set; }
+  
+    }
+}

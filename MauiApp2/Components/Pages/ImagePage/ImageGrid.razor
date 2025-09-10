@@ -1,0 +1,261 @@
+﻿@page "/Image"
+@using MauiApp2.Components.Common
+@using MauiApp2.Models
+@using MauiApp2.Service
+@inject ImageService imageService
+@inject IJSRuntime JS
+@inject ImageService imageService
+@inject NavigationManager Navigation
+
+@* <h3>Image Grid</h3> *@
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <p style="color: red;">Error: @errorMessage</p>
+}else{
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <input type="text" placeholder="Search Location" @bind="filterLocation" @bind:event="oninput" style="width:80%;" class="form-control" />
+        <button class="rounded-circle d-flex align-items-center justify-content-center"
+                style="width: 40px; height: 40px;" @onclick="ShowAddModal">
+            <img src="Icon/add.png" style="height:20px;" />
+        </button>
+    </div>
+    <!-- Album Grid View -->
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
+        @foreach (var group in FilteredImages.GroupBy(img => img.ImgDataLocation))
+        {
+            var locationName = string.IsNullOrWhiteSpace(group.Key) ? "Unknown" : group.Key;
+            var firstImage = group.FirstOrDefault();
+
+            <div class="col">
+                <div class="card text-center shadow-sm" @onclick="() => OpenLocationGroup(locationName)">
+                    <img src="data:image/jpeg;base64,@firstImage.ImgDataImg" class="card-img-top" style="object-fit: cover; height: 140px;" />
+                    <div class="card-body p-2">
+                        <p class="card-title fw-bold m-0" style="font-size: 0.9rem;">📍 @locationName</p>
+                        <span class="badge bg-dark mt-1">@group.Count() photo(s)</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    //for show all photos and details
+    <LocationAlbum LocationName="@openedLocation"
+                   Images="@imgmodel.Where(i => i.ImgDataLocation == openedLocation).ToList()"
+                   IsVisible="@showModal"
+                   OnClose="CloseLocationGroup"
+                   OnDelete="AskDelete" />
+//for massage box
+<ConfirmDialog IsVisible="@showConfirmModal"
+               Message="Are you sure you want to delete this image?"
+               OnConfirm="HandleDeleteConfirmation" />
+
+
+    @* <div class="pagination mt-2">
+        <button class="btn btn-secondary" @onclick="GoToPreviousPage" disabled="@(!CanGoToPreviousPage)">Previous</button>
+        <span>Page @currentPage of @totalPages</span>
+        <button class="btn btn-secondary" @onclick="GoToNextPage" disabled="@(!CanGoToNextPage)">Next</button>
+    </div> *@
+}
+
+<!-- Modal Component -->
+<ImageAddEdit Image="selectedimage"
+              Title="@modalTitle"
+              ButtonText="@modalButtonText"
+              IsVisible="@isModalVisible"
+              OnClose="CloseModal"
+           />
+
+@code {
+    private List<ImageModel> imgmodel = new();
+    private ImageModel selectedimage = new ImageModel();
+   
+    private string modalTitle = string.Empty;
+    private string modalButtonText = string.Empty;
+    private bool isModalVisible = false;
+
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string filterLocation = string.Empty;
+
+    // Pagination
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int pageSize = 10;
+
+    // private string? openedLocation;
+
+    // private void OpenLocationGroup(string location)
+    // {
+    //     openedLocation = location;
+    // }
+
+    // private void CloseLocationGroup()
+    // {
+    //     openedLocation = null;
+    // }
+
+
+    //for locationalbum page
+    private string? openedLocation;
+    private bool showModal = false;
+
+    private void OpenLocationGroup(string location)
+    {
+        openedLocation = location;
+        showModal = true;
+    }
+
+    private async Task CloseLocationGroup()
+    {
+        showModal = false;
+        await Task.Delay(200); // optional fade delay
+    }
+
+    //for massage box
+    private bool showConfirmModal = false;
+    private int imageIdToDelete = 0;
+
+    private void AskDelete(int imgDataId)
+    {
+        imageIdToDelete = imgDataId;
+        showConfirmModal = true;
+    }
+
+    private async Task HandleDeleteConfirmation(bool confirmed)
+    {
+        showConfirmModal = false;
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            await imageService.DeleteImageAsync(imageIdToDelete);
+            imgmodel = imgmodel.Where(i => i.ImgDataId != imageIdToDelete).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting image: {ex.Message}";
+        }
+    }
+
+
+
+    private IEnumerable<ImageModel> FilteredImages =>
+     string.IsNullOrWhiteSpace(filterLocation)
+         ? imgmodel
+         : imgmodel.Where(i =>
+             !string.IsNullOrEmpty(i.ImgDataLocation) &&
+             i.ImgDataLocation.Contains(filterLocation, StringComparison.OrdinalIgnoreCase));
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await SecureStorage.GetAsync("authToken");
+        if (string.IsNullOrEmpty(token))
+            Navigation.NavigateTo("/", true);
+        await LoadDetailsImage();
+    }
+
+    private async Task LoadDetailsImage()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await imageService.GetImaggeAsync();
+            imgmodel = response.data;
+            totalPages = (int)Math.Ceiling((double)imgmodel.Count / pageSize);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading images: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ShowAddModal()
+    {
+        selectedimage = new ImageModel();
+        modalTitle = "Add Image";
+        modalButtonText = "Add";
+        isModalVisible = true;
+    }
+    // private async Task SaveImage()
+    // {
+    //     try
+    //     {
+    //         // Validate required fields
+    //         if (string.IsNullOrEmpty(selectedimage.ImgDataImg) ||
+    //             string.IsNullOrEmpty(selectedimage.ImgDataExtractedText))
+    //         {
+    //             Console.WriteLine("❌ Missing image or OCR text.");
+    //             return;
+    //         }
+           
+    //         // Save to API
+    //         await imageService.AddImageAsync(selectedimage.ImgDataImg, selectedimage.ImgDataExtractedText, selectedimage.ImgDataLocation); // 🔁 Corrected
+
+    //         // Refresh grid
+    //         await LoadDetailsImage();
+
+    //         // Close modal
+    //         CloseModal();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Console.WriteLine($"❌ SaveImage error: {ex.Message}");
+    //     }
+    // }
+
+
+
+    private void CloseModal()
+    {
+        isModalVisible = false;
+    }
+
+    // Pagination
+    private bool CanGoToPreviousPage => currentPage > 1;
+    private bool CanGoToNextPage => currentPage < totalPages;
+
+    private async Task GoToPreviousPage()
+    {
+        if (CanGoToPreviousPage)
+        {
+            currentPage--;
+            await LoadDetailsImage();
+        }
+    }
+
+    private async Task GoToNextPage()
+    {
+        if (CanGoToNextPage)
+        {
+            currentPage++;
+            await LoadDetailsImage();
+        }
+    }
+    private async Task ConfirmDelete(int imgDataId)
+    {
+       
+            try
+            {
+                await imageService.DeleteImageAsync(imgDataId); // Make sure this method exists in your service
+                imgmodel = imgmodel.Where(i => i.ImgDataId != imgDataId).ToList();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting image: {ex.Message}";
+            }
+        
+    }
+}

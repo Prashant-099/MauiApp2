@@ -1,0 +1,329 @@
+﻿@* @page "/user-details"
+@using MauiApp2.Models
+@using MauiApp2.Service
+@inject UserService UserService
+
+<div class="user-details-container container">
+    <h3 class=" text-center">👤 User Details</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading user details...</p>
+        </div>
+    }
+    else if (userModel != null)
+    {
+        @if (!isEditing)
+        {
+            <!-- Read-Only View -->
+            <div class="card shadow-sm p-3">
+                <div class="mb-0"><strong>First Name:</strong> @userModel.UserFirstName</div>
+                <div class="mb-0"><strong>Last Name:</strong> @userModel.UserLastName</div>
+                <div class="mb-0"><strong>Email:</strong> @userModel.UserEmail</div>
+                <div class="mb-0"><strong>Username:</strong> @userModel.UserName</div>
+                <div class="mb-0"><strong>Mobile:</strong> @userModel.UserMobile</div>
+                <div class="mb-0"><strong>Address:</strong> @userModel.UserAddress</div>
+
+                <button class="btn btn-primary w-100 mt-1" @onclick="EnableEditMode">
+                    ✏️ Edit Details
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Edit Form -->
+            <EditForm Model="@userModel" OnValidSubmit="SaveChanges" class="card shadow-sm p-3">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-0">
+                    <label class="form-label">First Name</label>
+                    <InputText class="form-control" @bind-Value="userModel.UserFirstName" />
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label">Last Name</label>
+                    <InputText class="form-control" @bind-Value="userModel.UserLastName" />
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label">Email</label>
+                    <InputText class="form-control" @bind-Value="userModel.UserEmail" disabled />
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label">Username</label>
+                    <InputText class="form-control" @bind-Value="userModel.UserName" />
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label">Mobile</label>
+                    <InputText class="form-control" @bind-Value="userModel.UserMobile" />
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label">Address</label>
+                    <InputText class="form-control" @bind-Value="userModel.UserAddress" />
+                </div>
+
+                <div class="">
+                    <button type="submit" class="btn btn-success">💾 Save</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelEdit">❌ Cancel</button>
+                </div>
+            </EditForm>
+        }
+    }
+    else
+    {
+        <p class="text-danger text-center">❌ Error loading user details.</p>
+    }
+</div>
+
+@code {
+    private UserModel? userModel;
+    private bool isLoading = true;
+    private bool isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userId = await SecureStorage.GetAsync("userId");
+        if (string.IsNullOrEmpty(userId))
+        {
+            isLoading = false;
+            return;
+        }
+
+        var response = await UserService.GetUserByIdAsync(userId);
+        userModel = response;
+        isLoading = false;
+    }
+
+    private void EnableEditMode()
+    {
+        isEditing = true;
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+    }
+
+    private async Task SaveChanges()
+    {
+        if (userModel != null)
+        {
+            var isSuccess = await UserService.UpdateUserAsync(userModel);
+            if (isSuccess)
+            {
+                isEditing = false;
+                Console.WriteLine("✅ User updated successfully!");
+                // TODO: Add toast/snackbar message here if needed
+            }
+            else
+            {
+                Console.WriteLine("❌ Failed to update user.");
+            }
+        }
+    }
+}
+ *@
+@page "/user-details"
+@using MauiApp2.Models
+@using MauiApp2.Service
+@using MauiApp2.Services
+@inject UserService UserService
+
+<div class="user-details-container">
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Loading user details...</p>
+        </div>
+     
+    }
+    else if (userModel != null)
+    {
+        <div class="profile-card">
+            <div class="profile-header">
+                <img src="Icon/man.png" alt="User Avatar" class="profile-avatar" />
+                <h4>@userModel.UserFirstName @userModel.UserLastName</h4>
+                <p class="email">@userModel.UserEmail</p>
+            </div>
+          
+            @if (!isEditing)
+            {
+                <div class="profile-details">
+                    <div><strong>Username:</strong> @userModel.UserName</div>
+                    <div><strong>Mobile:</strong> @userModel.UserMobile</div>
+                    <div><strong>Address:</strong> @userModel.UserAddress</div>
+                    <div><strong>Role:</strong> @userModel.UserRoleName</div>
+                </div>
+
+                <div class="action-buttons">
+        <button class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2" @onclick="EnableEditMode">✏️ Edit Details</button>
+        <button class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2" @onclick="HandleLogout">
+            <img src="Icon/user-logout.png" alt="Logout" class="logout-icon-inside" />
+            Logout
+        </button>
+    </div>
+            }
+            else
+            {
+                <EditForm Model="@userModel" OnValidSubmit="SaveChanges">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <InputText class="form-control" @bind-Value="userModel.UserFirstName" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <InputText class="form-control" @bind-Value="userModel.UserLastName" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Username</label>
+                        <InputText class="form-control" @bind-Value="userModel.UserName" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mobile</label>
+                        <InputText class="form-control" @bind-Value="userModel.UserMobile" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Address</label>
+                        <InputText class="form-control" @bind-Value="userModel.UserAddress" />
+                    </div>
+
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-success w-50">💾 Save</button>
+                        <button type="button" class="btn btn-secondary w-50" @onclick="CancelEdit">❌ Cancel</button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="text-danger text-center">❌ Error loading user details.</p>
+    }
+</div>
+ 
+@code {
+     [Inject] private AuthService AuthService { get; set; }
+     [Inject] private NavigationManager NavigationManager { get; set; }
+    private UserModel? userModel;
+    private bool isLoading = true;
+    private bool isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {  
+        var token = await SecureStorage.GetAsync("authToken");
+        
+        if (string.IsNullOrEmpty(token))
+            NavigationManager.NavigateTo("/", true);
+
+        var userId = await SecureStorage.GetAsync("userId");
+        if (string.IsNullOrEmpty(userId))
+        {
+            isLoading = false;
+            return;
+        }
+
+        var response = await UserService.GetUserByIdAsync(userId);
+        userModel = response;
+        isLoading = false;
+    }
+
+    private void EnableEditMode()
+    {
+        isEditing = true;
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+    }
+
+    private async Task SaveChanges()
+    {
+        if (userModel != null)
+        {
+            var isSuccess = await UserService.UpdateUserAsync(userModel);
+            if (isSuccess)
+            {
+                isEditing = false;
+                Console.WriteLine("✅ User updated successfully!");
+                // TODO: Add toast/snackbar message here if needed
+            }
+            else
+            {
+                Console.WriteLine("❌ Failed to update user.");
+            }
+        }
+    }
+
+     private async Task HandleLogout()
+    {
+        // Perform logout by removing the token
+        await AuthService.LogoutAsync();
+
+        // // Redirect to the login page
+        NavigationManager.NavigateTo("/", true);
+    }
+}
+<style>
+     /* .logout-icon-inside {
+    height: 18px;
+    width: 18px;
+    object-fit: contain;
+   
+    transition: filter 0.2s ease;
+}
+
+    
+
+    .logout-icon-inside {
+        height: 18px;
+        width: 18px;
+        object-fit: contain;
+        transition: filter 0.2s ease;
+    } */
+    .action-buttons {
+    display: flex;
+    gap: 10px; /* space between buttons */
+    justify-content: center; /* center horizontally (optional) */
+    margin-top: 1rem;
+}
+
+.action-buttons button {
+    flex: 1; /* make buttons take equal width */
+    max-width: 150px; /* optional max width */
+    white-space: nowrap; /* prevent text wrapping */
+}
+.action-buttons button {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.9rem;
+    /* other styles */
+}
+
+    .logout-button-container {
+        display: flex;
+        justify-content: center;
+    }
+
+    .logout-icon-inside {
+        height: 18px;
+        width: 18px;
+        object-fit: contain;
+        transition: filter 0.2s ease;
+    }
+</style>

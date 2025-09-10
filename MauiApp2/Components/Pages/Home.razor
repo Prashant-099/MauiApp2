@@ -1,0 +1,186 @@
+﻿@page "/Home"
+@using MauiApp2.Components.Pages.ImagePage
+@using MauiApp2.Models
+@using MauiApp2.Service
+@inject ImageService ImageService
+@inject NavigationManager Navigation
+
+<style>
+    .dashboard-bg {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        min-height: 80vh;
+        padding-top: 20px;
+    }
+
+    .dashboard-summary {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 50px;
+       
+       
+    }
+
+    .card-kpi {
+        background: #fff6fb;
+        border-radius: 24px;
+        box-shadow: 0 2px 12px rgba(170,130,255,0.1);
+        padding: 18px 10px;
+        min-width: 50px;
+        text-align: center;
+        position: relative;
+    }
+
+        .card-kpi h5 {
+            color: #7c3aed;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+    .kpi-icon {
+        font-size: 42px;
+        color: #f87171;
+        margin-bottom: 6px;
+    }
+
+    .card-kpi h1 {
+        color: #111827;
+        font-size: 3.3rem;
+        font-weight: 800;
+        margin-top: 0;
+    }
+
+    .button-summary {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 10px;
+    }
+
+    .card-button {
+        background: #fff6fb;
+        border-radius: 24px;
+        box-shadow: 0 2px 12px rgba(170,130,255,0.1);
+        padding: 18px 10px;
+        min-width: 50px;
+        text-align: center;
+        position: relative;
+    }
+
+   /*  .Addbutton {
+        background: #fff6fb;
+        border-radius: 24px;
+        box-shadow: 0 2px 12px rgba(170,130,255,0.1);
+        padding: 18px 10px;
+        min-width: 50px;
+        
+        position: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 10px;
+    } */
+    /* Small button inside the card - absolute positioned top right */
+        .card-button .small-button {
+        font-size: 1.2rem;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        position: center;
+      
+        border-radius: 50%;
+        background: linear-gradient(135deg, white,#a21caf);
+        border: none;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(112, 56, 206, 0.3);
+        transition: background 0.3s;
+    }
+</style>
+
+<div class="dashboard-bg">
+    <h3 class="text-center" style="color:#6246ea; font-weight:700; margin-bottom:20px; letter-spacing:1px;">📊 Dashboard</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center" style="margin-top:80px;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p style="margin-top:18px;">Loading data...</p>
+        </div>
+    }
+    else
+    {
+        <div class="dashboard-summary">
+            <div class="card-kpi shadow">
+                <div class="kpi-icon">🖼️</div>
+                <h5>Total Images Uploaded</h5>
+                <h1>@TotalImages</h1>
+
+                <!-- Small plus button top right -->
+      @*           <button @onclick="OpenAddImageModal" class="small-button" aria-label="Add new image">➕</button> *@
+            </div>
+        </div>
+      @*   <div class="Addbutton">
+        <!-- Small plus button top right -->
+        </div> *@
+        <div class="button-summary">
+            <div class="card-button shadow">
+
+                <button @onclick="OpenAddImageModal" class="small-button" aria-label="Add new image">➕</button>
+            </div>
+        </div>
+    }
+
+    <!-- Add/Edit Image Modal -->
+    @if (isModalVisible)
+    {
+        <ImageAddEdit Image="selectedImage"
+                      Title="@modalTitle"
+                      ButtonText="@modalButtonText"
+                      IsVisible="true"
+                      OnClose="CloseModal" />
+    }
+</div>
+
+@code {
+    private int TotalImages = 0;
+    private bool isLoading = true;
+
+    // Modal control and data
+    private bool isModalVisible = false;
+    private string modalTitle = string.Empty;
+    private string modalButtonText = string.Empty;
+    private ImageModel selectedImage = new ImageModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var images = await ImageService.GetImaggeAsync();
+        TotalImages = images.data.Count;
+        isLoading = false;
+
+        var token = await SecureStorage.GetAsync("authToken");
+        if (string.IsNullOrEmpty(token))
+            Navigation.NavigateTo("/", true);
+    }
+
+    private void OpenAddImageModal()
+    {
+        selectedImage = new ImageModel(); // Clear form data
+        modalTitle = "Add New Image";
+        modalButtonText = "Add Image";
+        isModalVisible = true;
+    }
+
+    private void CloseModal()
+    {
+        isModalVisible = false;
+        RefreshTotalImages();
+    }
+
+    private async void RefreshTotalImages()
+    {
+        var images = await ImageService.GetImaggeAsync();
+        TotalImages = images.data.Count;
+        StateHasChanged();
+    }
+}

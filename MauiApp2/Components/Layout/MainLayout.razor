@@ -1,0 +1,78 @@
+﻿@inherits LayoutComponentBase
+@using MauiApp2.Services
+
+<div class="page">
+  <div class="sidebar">
+    <NavMenu />
+</div
+    <main>
+       
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+   
+</div>
+<!-- Mobile Footer Navigation -->
+<footer class="mobile-footer">
+    <button class="footer-btn" @onclick="NavigateHome">
+        <i class="bi bi-house-door-fill"></i>
+    </button>
+    <button class="footer-btn" @onclick="RefreshPage">
+        <i class="bi bi-arrow-clockwise"></i>
+    </button>
+    <button class="footer-btn" @onclick="NavigateUserDetails">
+        <i class="bi bi-person-circle"></i>
+    </button>
+</footer>
+@code{
+    [Inject] private AuthService AuthService { get; set; }
+    [Inject] private NavigationManager NavigationManager { get; set; }
+    // private async Task HandleLogout()
+    // {
+    //     // Perform logout by removing the token
+    //     await AuthService.LogoutAsync();
+
+    //     // Redirect to the login page
+    //     NavigationManager.NavigateTo("/", true);
+    // }
+    private void NavigateHome()
+    {
+        NavigationManager.NavigateTo("/Home");
+    }
+
+    private void RefreshPage()
+    {
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+
+    private void NavigateUserDetails()
+    {
+        NavigationManager.NavigateTo("/user-details");
+    }
+
+    private string UserName { get; set; } = "Loading...";
+    private string UserEmail { get; set; } = "Loading...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserName = await SecureStorage.GetAsync("UserName") ?? "Unknown User";
+        UserEmail = await SecureStorage.GetAsync("Email") ?? "Unknown Email";
+        
+
+    }
+     protected override void OnInitialized()
+    {
+        AuthService.OnLogout += HandleLogout;
+    }
+
+    private void HandleLogout()
+    {
+        NavigationManager.NavigateTo("/", true);
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnLogout -= HandleLogout; // Clean up event subscription
+    }
+}

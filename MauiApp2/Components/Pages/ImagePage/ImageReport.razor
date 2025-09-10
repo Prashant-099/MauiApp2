@@ -1,0 +1,118 @@
+﻿@page "/image-report"
+@using MauiApp2.Models
+@using MauiApp2.Service
+@using System.Text
+@inject ImageService imageService
+@inject IJSRuntime JS
+
+<h3 class="text-primary">📄 Report</h3>
+
+@if (isLoading)
+{
+    <p>Loading report...</p>
+}
+else if (!groupedImages.Any())
+{
+    <p class="text-danger">No images found.</p>
+}
+else
+{
+    <div class="mb-3">
+        <label>Select User:</label>
+        <select class="form-select" @bind="selectedUser" @bind:event="onchange">
+            <option value="">All Users</option>
+            @foreach (var user in allUsers)
+            {
+                <option value="@user">@user</option>
+            }
+        </select>
+
+    </div>
+
+    <button class="btn btn-success mb-3" @onclick="PrintReport">🖨️ Print</button>
+
+    @foreach (var group in groupedImages)
+    {
+        <div class="mb-4 border rounded p-3 shadow-sm">
+            <h5 class="text-info">📍 @group.Key <span class="badge bg-secondary">@group.Count()</span></h5>
+            <ul class="list-group list-group-flush">
+                @foreach (var img in group)
+                {
+                    <li class="list-group-item">
+                        <b>Date:</b> @img.ImgDataTimedate?.ToString("g")<br />
+                        <b>Extracted Text:</b> @img.ImgDataExtractedText<br />
+                        <b>User Name:</b> @img.ImgDataCreateUid
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+}
+
+@code {
+    private List<ImageModel> imgmodel = new();
+    private IEnumerable<IGrouping<string, ImageModel>> groupedImages;
+    private bool isLoading = true;
+    private string selectedUserBacking;
+    private string selectedUser
+    {
+        get => selectedUserBacking;
+        set
+        {
+            selectedUserBacking = value;
+            FilterReport(); // trigger filter on user change
+        }
+    }
+
+    private List<string> allUsers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await imageService.GetImaggeAsync();
+        imgmodel = result.data;
+
+        allUsers = imgmodel
+            .Select(i => i.ImgDataCreateUid)
+            .Distinct()
+            .OrderBy(u => u)
+            .ToList();
+
+        FilterReport();
+        isLoading = false;
+    }
+
+    private void FilterReport()
+    {
+        IEnumerable<ImageModel> filtered = imgmodel;
+
+        if (!string.IsNullOrWhiteSpace(selectedUser))
+        {
+            filtered = filtered.Where(i => i.ImgDataCreateUid == selectedUser);
+        }
+
+        groupedImages = filtered
+            .Where(i => !string.IsNullOrEmpty(i.ImgDataExtractedText))
+            .GroupBy(i => string.IsNullOrWhiteSpace(i.ImgDataLocation) ? "Unknown" : i.ImgDataLocation);
+    }
+
+    private async Task PrintReport()
+    {
+        try
+        {
+            string htmlContent = await imageService.GetHtmlReportAsync(selectedUser); // pass selected user
+
+            var fileName = "report.html";
+            var filePath = Path.Combine(FileSystem.CacheDirectory, fileName);
+            File.WriteAllText(filePath, htmlContent);
+
+            await Launcher.Default.OpenAsync(new OpenFileRequest
+            {
+                File = new ReadOnlyFile(filePath)
+            });
+        }
+        catch (Exception ex)     
+        {
+            Console.WriteLine("HTML report generation failed: " + ex.Message);
+        }
+    }
+}

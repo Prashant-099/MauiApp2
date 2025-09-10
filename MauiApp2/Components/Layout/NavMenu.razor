@@ -1,0 +1,27 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">FUMICERTI</a>
+    </div>
+
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/Home" Match="NavLinkMatch.All">
+                <span class="bi bi-house" aria-hidden="true"  style="font-size: 1.5rem;height:3rem;width:1.25rem; margin-right: 20px;"></span> Home
+            </NavLink>
+        </div>
+      @*    <div class="nav-item px-3">
+            <NavLink class="nav-link" href="image-report">
+                <span class="bi bi-file-earmark" aria-hidden="true" style="font-size: 1.5rem;height:3rem;width:1.25rem; margin-right: 20px;"></span> Report
+            </NavLink>
+        </div> *@
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/Image">
+                <span class="bi bi-images" aria-hidden="true" style="font-size: 1.5rem;height:3rem;width:1.25rem; margin-right: 20px;"></span> IMAGELIST
+            </NavLink>
+        </div>
+    </nav>
+</div>

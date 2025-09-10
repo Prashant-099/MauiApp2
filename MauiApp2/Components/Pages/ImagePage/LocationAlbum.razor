@@ -1,0 +1,49 @@
+﻿@using MauiApp2.Models
+<!-- LocationAlbum.razor -->
+@if (IsVisible && !string.IsNullOrEmpty(LocationName))
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title text-primary">📍 @LocationName Album</h6>
+                    <button type="button" class="btn-close" @onclick="OnClose"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-3">
+                        @foreach (var img in Images)
+                        {
+                            <div class="col">
+                                <div class="card h-100 shadow-sm">
+                                    <img class="card-img-top" src="data:image/jpeg;base64,@img.ImgDataImg" style="object-fit: cover; height: 150px;" />
+                                    <div class="card-body p-2">
+                                        <p class="card-text" style="font-size: 0.8rem;">📝 @img.ImgDataExtractedText</p>
+                                        <p class="card-text" style="font-size: 0.7rem;">📅 @img.ImgDataTimedate?.ToString("g")</p>
+                                    </div>
+                                    <div class="card-footer text-end p-2">
+                                        <button class="btn btn-sm btn-outline-danger"@onclick="() => AskDelete(img.ImgDataId)">
+                                            <img src="Icon/icons8-delete-50.png" style="height: 20px;" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@code {
+    [Parameter] public string LocationName { get; set; }
+    [Parameter] public List<ImageModel> Images { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+    [Parameter] public bool IsVisible { get; set; }
+   
+    private void AskDelete(int id)
+{
+    OnDelete.InvokeAsync(id);
+}
+
+}

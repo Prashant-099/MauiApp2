@@ -1,0 +1,158 @@
+﻿@page "/ocr"
+@using Plugin.Maui.OCR
+@using System.Text.Json;
+@using Microsoft.Maui.Storage;
+@using System.IO; 
+@using MauiApp2.Models
+@using MauiApp2.Service
+@inject ImageService ImageService
+
+<h3>OCR Capture</h3>
+<!-- Shows extracted text (can be readonly or editable) -->
+<textarea class="form-control" rows="4" @bind="imageModel.ImgDataExtractedText" />
+
+<br />
+<button class="btn btn-primary" @onclick="CaptureAndExtractText">Take Picture & Extract</button>
+<button class="btn btn-primary" @onclick="Upload">Upload</button>
+
+@* <p class="mt-3 text-success">@ocrResult</p> *@
+@if (!string.IsNullOrEmpty(imageModel.ImgDataImg))
+{
+    <div class="position-relative" style="max-width: 100%; width: 350px;">
+        <img src="@imageModel.ImgDataImg" class="img-fluid rounded shadow" />
+
+        <div class="position-absolute bottom-0 start-0 text-white w-100 p-2" style="background: rgba(0,0,0,0.5); font-size: 0.9rem;">
+            <div>📍 <strong>@imageModel.ImgDataExtractedText</strong></div>
+            <div>⏰ @imageModel.ImgDataTimedate?.ToString("dd-MMM-yyyy HH:mm:ss")</div>
+            @if (!string.IsNullOrEmpty(imageModel.ImgDataLocation))
+            {
+                <div>🏠 <span>@imageModel.ImgDataLocation</span></div>
+            }
+        </div>
+    </div>
+}
+
+
+@code {
+    // private string ocrResult = "";
+    // private string imageDataUrl;
+    // private double latitude, longitude;
+    // private DateTime timestamp;
+    // private string address;
+
+    private ImageModel imageModel = new ImageModel();
+    private async Task<string> GetAddressFromCoordinates(double lat, double lng)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            var url = $"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={lat}&lon={lng}";
+            httpClient.DefaultRequestHeaders.UserAgent.TryParseAdd("request"); // Required by Nominatim
+
+            var response = await httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var result = JsonDocument.Parse(json);
+                if (result.RootElement.TryGetProperty("display_name", out var displayName))
+                {
+                    return displayName.GetString();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Reverse geocode failed: {ex.Message}");
+        }
+        return "Address not found";
+    }
+    private async Task CaptureAndExtractText()
+    {
+        try
+        {
+            // ✅ Check permissions first
+            var cameraStatus = await Permissions.CheckStatusAsync<Permissions.Camera>();
+            if (cameraStatus != PermissionStatus.Granted)
+                cameraStatus = await Permissions.RequestAsync<Permissions.Camera>();
+
+            if (cameraStatus != PermissionStatus.Granted)
+            {
+                Console.WriteLine("Camera permission denied.");
+                imageModel.ImgDataExtractedText = "Camera permission denied.";
+                return;
+            }
+
+            // ✅ Capture photo once
+            var photo = await MediaPicker.CapturePhotoAsync();
+
+            if (photo != null)
+            {
+                using var imageAsStream = await photo.OpenReadAsync();
+
+                // ✅ Set image preview (Base64)
+                using var ms = new MemoryStream();
+                await imageAsStream.CopyToAsync(ms);
+                var imageAsBytes = ms.ToArray();
+
+                imageModel.ImgDataImg = $"data:image/jpeg;base64,{Convert.ToBase64String(imageAsBytes)}";
+
+                // ✅ OCR from same bytes
+                var ocrResultRaw = await OcrPlugin.Default.RecognizeTextAsync(imageAsBytes);
+                imageModel.ImgDataExtractedText = ocrResultRaw.Success ? ocrResultRaw.AllText : "OCR failed.";
+
+                // ✅ Location Permission
+                var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                if (locationStatus != PermissionStatus.Granted)
+                    locationStatus = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+
+                if (locationStatus == PermissionStatus.Granted)
+                {
+                    var location = await Geolocation.GetLastKnownLocationAsync() ?? await Geolocation.GetLocationAsync(new GeolocationRequest
+                {
+                    DesiredAccuracy = GeolocationAccuracy.High,
+                    Timeout = TimeSpan.FromSeconds(10)
+                });
+
+                    if (location != null)
+                    {
+                        imageModel.Latitude = location.Latitude;
+                        imageModel.Longitude = location.Longitude;
+                        imageModel.ImgDataLocation = await GetAddressFromCoordinates(imageModel.Latitude!.Value, imageModel.Longitude!.Value);
+
+                    }
+                }
+
+                // ✅ Timestamp
+                imageModel.ImgDataTimedate = DateTime.Now;
+            }
+           
+
+        }
+
+        catch (Exception ex)
+        {
+            imageModel.ImgDataExtractedText = $"Error: {ex.Message}";
+        }
+    }
+    private async Task Upload()
+    {
+        // // ✅ Upload to server
+        // using var uploadStream = new MemoryStream(Convert.FromBase64String(imageModel.ImageDataUrl!.Replace("data:image/jpeg;base64,", "")));
+
+        // bool success = await ImageService.UploadImageAsync(
+        //     uploadStream,
+        //     $"capture_{imageModel.Timestamp:yyyyMMdd_HHmmss}.jpg",
+        //     imageModel.Address ?? "Unknown",
+        //     imageModel.OcrResult ?? ""
+        // );
+
+        // if (!success)
+        // {
+        //     imageModel.OcrResult += "\n❌ Upload failed.";
+        // }
+        // else
+        // {
+        //     imageModel.OcrResult += "\n✅ Uploaded successfully.";
+        // }
+    }
+}

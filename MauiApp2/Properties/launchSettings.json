@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Windows Machine": {
+      "commandName": "Project",
+      "workingDirectory": "D:\\MauiApp2\\MauiApp2",
+      "nativeDebugging": false
+    }
+  }
+}
