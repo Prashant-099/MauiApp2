@@ -16,7 +16,6 @@ Global
 		{FAA76D68-DACC-4C68-AB43-E349137CBC80}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{FAA76D68-DACC-4C68-AB43-E349137CBC80}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FAA76D68-DACC-4C68-AB43-E349137CBC80}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FAA76D68-DACC-4C68-AB43-E349137CBC80}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -10,8 +10,8 @@ namespace MauiApp2.Models
         [JsonPropertyName("imgDataExtractedText")]
         public string? ImgDataExtractedText { get; set; }
 
-        [JsonPropertyName("imgDataImg")]
-        public string? ImgDataImg { get; set; }
+        [JsonPropertyName("imgData_Img_Url")]
+        public string? ImgData_Img_Url { get; set; }
 
         [JsonPropertyName("latitude")]
         public double? Latitude { get; set; }
@@ -26,13 +26,13 @@ namespace MauiApp2.Models
         public string? ImgDataLocation { get; set; }
         // Optional properties (based on JSON):
         [JsonPropertyName("imgDataUserUploaded")]
-        public string? ImgDataUserUploaded { get; set; } = "1";
+        public string? ImgDataUserUploaded { get; set; } 
 
         [JsonPropertyName("imgDataCreated")]
-        public DateTime? ImgDataCreated { get; set; } = DateTime.Now;
+        public DateTime? ImgDataCreated { get; set; } 
 
         [JsonPropertyName("imgDataUpdated")]
-        public DateTime? ImgDataUpdated { get; set; } = DateTime.Now;
+        public DateTime? ImgDataUpdated { get; set; }
 
         [JsonPropertyName("imgDataCreateUid")]
         public string? ImgDataCreateUid { get; set; } 

@@ -33,7 +33,8 @@ else if (!string.IsNullOrEmpty(errorMessage))
 
             <div class="col">
                 <div class="card text-center shadow-sm" @onclick="() => OpenLocationGroup(locationName)">
-                    <img src="data:image/jpeg;base64,@firstImage.ImgDataImg" class="card-img-top" style="object-fit: cover; height: 140px;" />
+                    <img src="@firstImage.ImgData_Img_Url" class="card-img-top" style="object-fit: cover; height: 140px;" />
+
                     <div class="card-body p-2">
                         <p class="card-title fw-bold m-0" style="font-size: 0.9rem;">📍 @locationName</p>
                         <span class="badge bg-dark mt-1">@group.Count() photo(s)</span>
@@ -62,13 +63,15 @@ else if (!string.IsNullOrEmpty(errorMessage))
 }
 
 <!-- Modal Component -->
+ @if (isModalVisible)
+    {
 <ImageAddEdit Image="selectedimage"
               Title="@modalTitle"
               ButtonText="@modalButtonText"
               IsVisible="@isModalVisible"
               OnClose="CloseModal"
            />
-
+    }
 @code {
     private List<ImageModel> imgmodel = new();
     private ImageModel selectedimage = new ImageModel();

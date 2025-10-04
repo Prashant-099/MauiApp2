@@ -136,7 +136,7 @@
 @using MauiApp2.Service
 @using MauiApp2.Services
 @inject UserService UserService
-
+@inject ToastService ToastService
 <div class="user-details-container">
     @if (isLoading)
     {
@@ -260,13 +260,15 @@
             var isSuccess = await UserService.UpdateUserAsync(userModel);
             if (isSuccess)
             {
+                var updatedUser = await UserService.GetUserByIdAsync(userModel.UserId);
+                userModel = updatedUser;
+
                 isEditing = false;
-                Console.WriteLine("✅ User updated successfully!");
-                // TODO: Add toast/snackbar message here if needed
+                ToastService.Show("✅ User updated successfully!", "success");
             }
             else
             {
-                Console.WriteLine("❌ Failed to update user.");
+                ToastService.Show("❌ Failed to update user.", "danger");
             }
         }
     }
@@ -326,4 +328,24 @@
         object-fit: contain;
         transition: filter 0.2s ease;
     }
+
+
+    .action-buttons .btn-outline-danger:first-child {
+        border-color: #0d6efd;
+        color: #0d6efd;
+    }
+
+        .action-buttons .btn-outline-danger:first-child:hover {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+    .profile-card {
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 1rem;
+        padding: 1rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        backdrop-filter: blur(8px);
+    }
+
 </style>

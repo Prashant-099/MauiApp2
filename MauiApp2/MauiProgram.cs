@@ -3,7 +3,6 @@ using MauiApp2.Services;
 using Microsoft.Extensions.Logging;
 using Plugin.Maui.OCR;
 using System.Net.Http;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace MauiApp2
 {
@@ -20,17 +19,24 @@ namespace MauiApp2
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");   
                 });
             // ✅ Register HttpClient
+            //builder.Services.AddScoped(sp => new HttpClient
+            //{
+            //    BaseAddress = new Uri("http://fumicerti.bhed.in/") // Adjust if needed
+            //});
             builder.Services.AddScoped(sp => new HttpClient
             {
-                BaseAddress = new Uri("http://fumicerti.bhed.in/") // Adjust if needed
+                BaseAddress = new Uri("http://fumicertiapi.freightbook.in/") // Adjust if needed
             });
             //builder.Services.AddScoped(sp => new HttpClient
             //{
+
             //    BaseAddress = new Uri("http://localhost:5004/")
             //});
 
 
+
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddSingleton<ToastService>();
             builder.Services.AddSingleton<AuthService>();
             builder.Services.AddScoped<ImageService>();
             builder.Services.AddScoped<UserService>();

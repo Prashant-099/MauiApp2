@@ -164,9 +164,12 @@ namespace MauiApp2.Services
             public string Token { get; set; }
             public string Username { get; set; }
             public string Email { get; set; }
-            //public string Rolename { get; set; }
-            //public string RefreshToken { get; set; }
-            //public long tokenExp { get; set; }
+            public string Rolename { get; set; }
+            public string RefreshToken { get; set; }
+            public long tokenExp { get; set; }
+            public DateTime refreshtokenExp { get; set; }
+            public string UserId { get; set; }
+            public int? BranchId { get; set; }
         }
     }
 }

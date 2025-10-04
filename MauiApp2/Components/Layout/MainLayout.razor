@@ -1,4 +1,5 @@
 ﻿@inherits LayoutComponentBase
+@using MauiApp2.Components.Pages
 @using MauiApp2.Services
 
 <div class="page">
@@ -7,7 +8,7 @@
 </div
     <main>
        
-        <article class="content px-4">
+        <article class="content px-2">
             @Body
         </article>
     </main>
@@ -25,7 +26,9 @@
         <i class="bi bi-person-circle"></i>
     </button>
 </footer>
+<ToastComponent />
 @code{
+    
     [Inject] private AuthService AuthService { get; set; }
     [Inject] private NavigationManager NavigationManager { get; set; }
     // private async Task HandleLogout()

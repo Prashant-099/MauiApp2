@@ -8,7 +8,7 @@
 <style>
     .dashboard-bg {
         background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
-        min-height: 80vh;
+        min-height: 81vh;
         padding-top: 20px;
     }
 
@@ -16,7 +16,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        margin-top: 50px;
+        margin-top: 5px;
        
        
     }
@@ -26,7 +26,7 @@
         border-radius: 24px;
         box-shadow: 0 2px 12px rgba(170,130,255,0.1);
         padding: 18px 10px;
-        min-width: 50px;
+        min-width: 200px;
         text-align: center;
         position: relative;
     }
@@ -50,14 +50,14 @@
         margin-top: 0;
     }
 
-    .button-summary {
+    /* .button-summary {
         display: flex;
         justify-content: center;
         align-items: center;
         margin-top: 10px;
-    }
+    } */
 
-    .card-button {
+    .card-kpi-button {
         background: #fff6fb;
         border-radius: 24px;
         box-shadow: 0 2px 12px rgba(170,130,255,0.1);
@@ -81,7 +81,7 @@
         margin-top: 10px;
     } */
     /* Small button inside the card - absolute positioned top right */
-        .card-button .small-button {
+    .card-kpi .small-button {
         font-size: 1.2rem;
         width: 32px;
         height: 32px;
@@ -89,9 +89,9 @@
         position: center;
       
         border-radius: 50%;
-        background: linear-gradient(135deg, white,#a21caf);
+        
         border: none;
-        color: white;
+        color: dodgerblue;
         cursor: pointer;
         box-shadow: 0 4px 10px rgba(112, 56, 206, 0.3);
         transition: background 0.3s;
@@ -99,7 +99,8 @@
 </style>
 
 <div class="dashboard-bg">
-    <h3 class="text-center" style="color:#6246ea; font-weight:700; margin-bottom:20px; letter-spacing:1px;">📊 Dashboard</h3>
+   @*  <h3 class="text-center" style="color:#6246ea; font-weight:700; margin-bottom:20px; letter-spacing:1px;">📊 Dashboard</h3> *@
+    <img src="images/logo.png" alt="App Icon" style="width:80px; margin:auto; display:block;  mix-blend-mode :multiply; background:transparent; filter:brightness(1.1) contrast(1.2);" />
 
     @if (isLoading)
     {
@@ -113,9 +114,9 @@
         <div class="dashboard-summary">
             <div class="card-kpi shadow">
                 <div class="kpi-icon">🖼️</div>
-                <h5>Total Images Uploaded</h5>
-                <h1>@TotalImages</h1>
-
+                <h5>Add New</h5>
+             @*    <h1>@TotalImages</h1> *@
+                <button @onclick="OpenAddImageModal" class="small-button" aria-label="Add new image">➕</button>
                 <!-- Small plus button top right -->
       @*           <button @onclick="OpenAddImageModal" class="small-button" aria-label="Add new image">➕</button> *@
             </div>
@@ -123,10 +124,19 @@
       @*   <div class="Addbutton">
         <!-- Small plus button top right -->
         </div> *@
-        <div class="button-summary">
+      @*   <div class="button-summary">
             <div class="card-button shadow">
 
                 <button @onclick="OpenAddImageModal" class="small-button" aria-label="Add new image">➕</button>
+            </div>
+        </div> *@
+
+
+        <div class="dashboard-summary">
+            <div class="card-kpi shadow">
+               
+                <h5>View List</h5>
+                <button @onclick='() => Navigation.NavigateTo("/Image")' class="small-button" aria-label="Add new image">📋</button>
             </div>
         </div>
     }
@@ -140,6 +150,7 @@
                       IsVisible="true"
                       OnClose="CloseModal" />
     }
+
 </div>
 
 @code {
@@ -154,8 +165,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var images = await ImageService.GetImaggeAsync();
-        TotalImages = images.data.Count;
+        // var images = await ImageService.GetImaggeAsync();
+        // TotalImages = images.data.Count;
         isLoading = false;
 
         var token = await SecureStorage.GetAsync("authToken");

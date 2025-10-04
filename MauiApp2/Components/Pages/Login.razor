@@ -166,10 +166,11 @@
             await SecureStorage.SetAsync("authToken", response.Token);
             await SecureStorage.SetAsync("UserName", response.Username);
             await SecureStorage.SetAsync("Email", response.Email);
-            // await SecureStorage.SetAsync("role", response.Rolename);
-            // await SecureStorage.SetAsync("refreshToken", response.RefreshToken);
-            // await SecureStorage.SetAsync("tokenExpiry", response.tokenExp.ToString());
-            // await SecureStorage.SetAsync("userId", response.UserId);
+             await SecureStorage.SetAsync("role", response.Rolename);
+            await SecureStorage.SetAsync("refreshToken", response.RefreshToken);
+             await SecureStorage.SetAsync("tokenExpiry", response.tokenExp.ToString());
+             await SecureStorage.SetAsync("userId", response.UserId);
+            await SecureStorage.SetAsync("refreshtokenExp", response.refreshtokenExp.ToString());
 
             await ShowTimedMessage("✅ Login successful!", "alert-success");
             Navigation.NavigateTo("/Home", true);

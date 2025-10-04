@@ -128,69 +128,94 @@ namespace MauiApp2.Service
         /// <summary>
         /// Adds a new image record to the API.
         /// </summary>
-        public async Task<ImageModel> AddImageAsync(string imageBase64, string extractedText, string location, string ImgDataUserUploaded, string ImgDataCreateUid, string ImgDataEditedUid)
-        {
-            try
-            {
-                await SetAuthorizationHeaderIfNeeded();
-
-                var base64 = imageBase64?.Replace("data:image/jpeg;base64,", "") ?? "";
-                var imageBytes = Convert.FromBase64String(base64);
-
-                using var content = new MultipartFormDataContent();
-
-                // Add the image as a file
-                var imageContent = new ByteArrayContent(imageBytes);
-                imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-                content.Add(imageContent, "ImageFile", "capture.jpeg");
-
-                // Add other form fields
-                content.Add(new StringContent(location ?? ""), "Location");
-                content.Add(new StringContent(extractedText ?? ""), "ExtractedText");
-                content.Add(new StringContent(ImgDataUserUploaded ?? ""), "ImgDataUserUploaded");
-                content.Add(new StringContent(ImgDataCreateUid ?? ""), "ImgDataCreateUid");
-                content.Add(new StringContent(ImgDataEditedUid ?? ""), "ImgDataEditedUid");
-                //content.Add(new StringContent(base64 ?? ""), "base64");
-
-
-                var response = await _httpClient.PostAsync("api/ImgData/upload-base64", content);
-                response.EnsureSuccessStatusCode();
-
-                var responseJson = await response.Content.ReadAsStringAsync();
-                Console.WriteLine("⬅️ Response JSON:\n" + responseJson);
-
-                var savedImage = await response.Content.ReadFromJsonAsync<ImageModel>();
-                if (savedImage == null)
-                    throw new Exception("Upload succeeded but parsing response failed.");
-
-                return savedImage;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Upload failed: {ex.Message}");
-                throw;
-            }
-        }
-        /// <summary>
-        /// Updates an existing image record.
-        /// </summary>
-        //public async Task UpdateImageAsync(ImageModel image)
+        //public async Task<ImageModel> AddImageAsync(string imageBase64, string extractedText, string location, string ImgDataUserUploaded, string ImgDataCreateUid, string ImgDataEditedUid)
         //{
         //    try
         //    {
         //        await SetAuthorizationHeaderIfNeeded();
-        //        var response = await _httpClient.PutAsJsonAsync($"api/ImgData/{image.ImgDataId}", image);
+
+        //        var base64 = imageBase64?.Replace("data:image/jpeg;base64,", "") ?? "";
+        //        var imageBytes = Convert.FromBase64String(base64);
+
+        //        using var content = new MultipartFormDataContent();
+
+        //        // Add the image as a file
+        //        var imageContent = new ByteArrayContent(imageBytes);
+        //        imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        //        content.Add(imageContent, "ImageFile", "capture.jpeg");
+
+        //        // Add other form fields
+        //        content.Add(new StringContent(location ?? ""), "Location");
+        //        content.Add(new StringContent(extractedText ?? ""), "ExtractedText");
+        //        content.Add(new StringContent(ImgDataUserUploaded ?? ""), "ImgDataUserUploaded");
+        //        content.Add(new StringContent(ImgDataCreateUid ?? ""), "ImgDataCreateUid");
+        //        content.Add(new StringContent(ImgDataEditedUid ?? ""), "ImgDataEditedUid");
+        //        //content.Add(new StringContent(base64 ?? ""), "base64");
+
+
+        //        var response = await _httpClient.PostAsync("api/ImgData/upload-base64", content);
         //        response.EnsureSuccessStatusCode();
+
+        //        var responseJson = await response.Content.ReadAsStringAsync();
+        //        Console.WriteLine("⬅️ Response JSON:\n" + responseJson);
+
+        //        var savedImage = await response.Content.ReadFromJsonAsync<ImageModel>();
+        //        if (savedImage == null)
+        //            throw new Exception("Upload succeeded but parsing response failed.");
+
+        //        return savedImage;
         //    }
         //    catch (Exception ex)
         //    {
-        //        throw new Exception($"Error updating image with ID {image.ImgDataId}: {ex.Message}", ex);
+        //        Console.WriteLine($"❌ Upload failed: {ex.Message}");
+        //        throw;
         //    }
         //}
+        public async Task<ImageModel> AddImageAsync(FileResult file, string extractedText, string location, string ImgDataUserUploaded, string ImgDataCreateUid, string ImgDataEditedUid)
+        {
+            await SetAuthorizationHeaderIfNeeded();
 
-        /// <summary>
-        /// Deletes an image record by ID.
-        /// </summary>
+            using var stream = await file.OpenReadAsync();
+            using var content = new MultipartFormDataContent();
+
+            var imageContent = new StreamContent(stream);
+            imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            content.Add(imageContent, "ImageFile", file.FileName);
+
+            content.Add(new StringContent(location ?? ""), "Location");
+            content.Add(new StringContent(extractedText ?? ""), "ExtractedText");
+            content.Add(new StringContent(ImgDataUserUploaded ?? ""), "ImgDataUserUploaded");
+
+            var response = await _httpClient.PostAsync("api/ImgData/upload", content);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<ImageModel>();
+        }
+
+        public async Task<ImageModel?> UpdateImageAsync(int id, FileResult? file, string extractedText, string location, string userId)
+        {
+            await SetAuthorizationHeaderIfNeeded();
+
+            using var content = new MultipartFormDataContent();
+
+            if (file != null)
+            {
+                using var stream = await file.OpenReadAsync();
+                var imageContent = new StreamContent(stream);
+                imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+                content.Add(imageContent, "ImageFile", file.FileName);
+            }
+
+            content.Add(new StringContent(location ?? ""), "Location");
+            content.Add(new StringContent(extractedText ?? ""), "ExtractedText");
+            content.Add(new StringContent(userId ?? ""), "ImgDataEditedUid");
+
+            var response = await _httpClient.PutAsync($"api/ImgData/{id}", content);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<ImageModel>();
+        }
+
         public async Task DeleteImageAsync(int id)
         {
             try

@@ -4,7 +4,8 @@
 @using System.IO
 @using MauiApp2.Models
 @using MauiApp2.Service
-@* @using SkiaSharp; *@
+@inject ToastService ToastService
+@using SkiaSharp;
 @inject NavigationManager Navigation
 @inject ImageService ImageService
 
@@ -19,19 +20,13 @@
                 </div>
                 <div class="modal-body">
                     <textarea class="form-control" rows="4" placeholder="Extracted Text" @bind="Image.ImgDataExtractedText" />
-                    <div class="mt-3 d-flex gap-2">
-                        <button class="btn btn-primary" @onclick="CaptureAndExtractText">📸 Click</button>
-                        <button class="btn btn-success" @onclick="Upload">⬆️ Upload</button>
-                        <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(Image.ImgDataImg))
+                    @if (!string.IsNullOrEmpty(Image.ImgData_Img_Url))
                     {
                         <div class="mt-4 position-relative" style="max-width: 100%; width: 350px;">
-                            <img src="@Image.ImgDataImg" class="img-fluid rounded shadow" />
+                            <img src="@Image.ImgData_Img_Url" class="img-fluid rounded shadow" />
                             <div class="position-absolute bottom-0 start-0 text-white w-100 p-2" style="background: rgba(0,0,0,0.5); font-size: 0.9rem;">
-                                <div>📍 <strong>@Image.ImgDataExtractedText</strong></div>
-                               @*  <div>⏰ @Imagdto.ImgDataTimedate?.ToString("dd-MMM-yyyy HH:mm:ss")</div> *@
+                                <div>📝 <strong>@Image.ImgDataExtractedText</strong></div>
+                                @*  <div>⏰ @Imagdto.ImgDataTimedate?.ToString("dd-MMM-yyyy HH:mm:ss")</div> *@
                                 @if (!string.IsNullOrEmpty(Image.ImgDataLocation))
                                 {
                                     <div>🏠 <span>@Image.ImgDataLocation</span></div>
@@ -39,6 +34,35 @@
                             </div>
                         </div>
                     }
+                    <div class="mt-3 d-flex gap-2">
+                      @*   <button class="btn btn-primary" @onclick="CaptureAndExtractText" disabled="@isCameraLoading">
+                            @if (isCameraLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <text>Capturing...</text>
+                            }
+                            else
+                            {
+                                <text>📸 Camera</text>
+                            }
+                        </button> *@
+
+                        <button class="btn btn-success" @onclick="Upload" disabled="@isUploadLoading">
+                            @if (isUploadLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <text>Uploading...</text>
+                            }
+                            else
+                            {
+                                <text>⬆️ Upload</text>
+                            }
+                        </button>
+
+                        <button class="btn btn-secondary" @onclick="CloseModal"> ❌ Cancel</button>
+                    </div>
+
+                  
                 </div>
             </div>
         </div>
@@ -47,7 +71,7 @@
 
 @code {
     [Parameter] public ImageModel Image { get; set; } = new ImageModel();
-    
+
     [Parameter] public string Title { get; set; } = "Add Image";
     [Parameter] public string ButtonText { get; set; } = "Add";
     [Parameter] public bool IsVisible { get; set; }
@@ -60,36 +84,37 @@
     private int currentPage = 1;
     private int totalPages = 1;
     private int pageSize = 10;
+    private FileResult? capturedFile;
+    private bool isCameraLoading = false;
+    private bool isUploadLoading = false;
+    public static class ImageCompressor
+    {
+        public static byte[] CompressImage(byte[] inputBytes, int maxSizeKb = 10, int initialQuality = 50)
+        {
+            using var inputStream = new SKMemoryStream(inputBytes);
+            using var codec = SKCodec.Create(inputStream);
+            var bitmap = SKBitmap.Decode(codec);
 
- 
-    // public static class ImageCompressor
-    // {
-    //     public static byte[] CompressImage(byte[] inputBytes, int maxSizeKb = 10, int initialQuality = 50)
-    //     {
-    //         using var inputStream = new SKMemoryStream(inputBytes);
-    //         using var codec = SKCodec.Create(inputStream);
-    //         var bitmap = SKBitmap.Decode(codec);
+            if (bitmap == null)
+                throw new Exception("Failed to decode image.");
 
-    //         if (bitmap == null)
-    //             throw new Exception("Failed to decode image.");
+            using var image = SKImage.FromBitmap(bitmap);
 
-    //         using var image = SKImage.FromBitmap(bitmap);
+            int quality = initialQuality;
+            byte[] compressedBytes;
 
-    //         int quality = initialQuality;
-    //         byte[] compressedBytes;
+            do
+            {
+                using var data = image.Encode(SKEncodedImageFormat.Jpeg, quality);
+                compressedBytes = data.ToArray();
+                quality -= 5;
 
-    //         do
-    //         {
-    //             using var data = image.Encode(SKEncodedImageFormat.Jpeg, quality);
-    //             compressedBytes = data.ToArray();
-    //             quality -= 5;
+            } while (compressedBytes.Length > maxSizeKb * 1024 && quality > 5);
 
-    //         } while (compressedBytes.Length > maxSizeKb * 1024 && quality > 5);
+            return compressedBytes;
+        }
 
-    //         return compressedBytes;
-    //     }
-
-    // }
+    }
 
 
     private async Task<string> GetAddressFromCoordinates(double lat, double lng)
@@ -120,37 +145,51 @@
 
     private async Task CaptureAndExtractText()
     {
+
         try
         {
+            isCameraLoading = true;
             var cameraStatus = await Permissions.CheckStatusAsync<Permissions.Camera>();
             if (cameraStatus != PermissionStatus.Granted)
                 cameraStatus = await Permissions.RequestAsync<Permissions.Camera>();
 
             if (cameraStatus != PermissionStatus.Granted)
             {
-                Image.ImgDataExtractedText = "Camera permission denied.";
+                ToastService.Show("Camera permission denied.", "danger");
                 return;
             }
 
             var photo = await MediaPicker.CapturePhotoAsync();
             if (photo != null)
             {
+                capturedFile = photo;
                 using var stream = await photo.OpenReadAsync();
                 using var ms = new MemoryStream();
                 await stream.CopyToAsync(ms);
                 var imageBytes = ms.ToArray();
-  // 🔽 Compress to under 10KB
-    // var compressedBytes = ImageCompressor.CompressImage(imageBytes, 10);
-                Image.ImgDataImg = $"data:image/jpeg;base64,{Convert.ToBase64String(imageBytes)}";
+                // 🔽 Compress to under 50KB
+                var compressedBytes = ImageCompressor.CompressImage(imageBytes, 50);
+                Image.ImgData_Img_Url = $"data:image/jpeg;base64,{Convert.ToBase64String(compressedBytes)}";
 
                 var ocrResult = await OcrPlugin.Default.RecognizeTextAsync(imageBytes);
-                Image.ImgDataExtractedText = ocrResult.Success ? ocrResult.AllText : "OCR failed.";
+
+                if (ocrResult.Success && !string.IsNullOrWhiteSpace(ocrResult.AllText))
+                {
+                    Image.ImgDataExtractedText = ocrResult.AllText;
+                }
+                else
+                {
+                    Image.ImgDataExtractedText = string.Empty; // keep textarea empty
+                    ToastService.Show("Text Not Found. Please try again.", "danger");
+                }
+
 
                 var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
-                if (locationStatus != PermissionStatus.Granted)
+                if (locationStatus != PermissionStatus.Granted){
                     locationStatus = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-
-                if (locationStatus == PermissionStatus.Granted)
+                    ToastService.Show("Location permission denied. GPS data will not be captured.", "danger");
+                }
+                else
                 {
                     var location = await Geolocation.GetLastKnownLocationAsync() ?? await Geolocation.GetLocationAsync(new GeolocationRequest
                     {
@@ -173,26 +212,36 @@
         {
             Image.ImgDataExtractedText = $"Error: {ex.Message}";
         }
+        finally
+        {
+            isCameraLoading = false;
+        }
     }
 
     private async Task Upload()
     {
         try
         {
-            if (string.IsNullOrEmpty(Image.ImgDataImg) || string.IsNullOrEmpty(Image.ImgDataExtractedText))
-            {
-                Image.ImgDataExtractedText += "\n⚠️ Please take a photo and extract text before uploading.";
+            if (string.IsNullOrEmpty(Image.ImgData_Img_Url) || string.IsNullOrEmpty(Image.ImgDataExtractedText) || string.IsNullOrEmpty(Image.ImgDataLocation))
+            { 
+                ToastService.Show(" Please Check  Photo , Extract Text and the Loaction before uploading.", "warning");
                 return;
             }
+            isUploadLoading = true;
 
-            await ImageService.AddImageAsync(Image.ImgDataImg, Image.ImgDataExtractedText, Image.ImgDataLocation, Image.ImgDataUserUploaded, Image.ImgDataCreateUid, Image.ImgDataEditedUid); // ✅ Use bound parameter directly
+            await ImageService.AddImageAsync(capturedFile, Image.ImgDataExtractedText, Image.ImgDataLocation, Image.ImgDataUserUploaded, Image.ImgDataCreateUid, Image.ImgDataEditedUid); // ✅ Use bound parameter directly
+            ToastService.Show("Image uploaded successfully!", "success");
             // await OnSubmit.InvokeAsync(); // Notify parent to refresh list
             await CloseModal();
-            Navigation.NavigateTo("/Image", true);
+            //Navigation.NavigateTo("/Image");
         }
         catch (Exception ex)
         {
-            Image.ImgDataExtractedText += $"\n❌ Upload failed: {ex.Message}";
+            ToastService.Show($"Upload failed: {ex.Message}", "danger");
+        }
+        finally
+        {
+            isUploadLoading = false;
         }
     }
 
@@ -218,4 +267,17 @@
     // }
 
     private async Task CloseModal() => await OnClose.InvokeAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        var cameraStatus = await Permissions.CheckStatusAsync<Permissions.Camera>();
+        if (cameraStatus != PermissionStatus.Granted)
+            cameraStatus = await Permissions.RequestAsync<Permissions.Camera>();
+        var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+        if (locationStatus != PermissionStatus.Granted)
+        {
+            locationStatus = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+
+        }
+        await CaptureAndExtractText();
+    }
 }
